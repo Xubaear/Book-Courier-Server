@@ -68,7 +68,7 @@ app.get('/books/latest', async (req, res) => {
   const latestBooks = await booksCollection
     .find()
     .sort({ createdAt: -1 })
-    .limit(6)
+    .limit(5)
     .toArray();
 
   res.send(latestBooks);
