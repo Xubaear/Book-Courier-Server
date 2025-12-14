@@ -150,24 +150,24 @@ async function run() {
 
     /* ================= PAYMENTS (FAKE) ================= */
 
-    app.post('/payments', async (req, res) => {
-      const payment = req.body;
-      payment.createdAt = new Date();
+    // app.post('/payments', async (req, res) => {
+    //   const payment = req.body;
+    //   payment.createdAt = new Date();
 
-      await ordersCollection.updateOne(
-        { _id: new ObjectId(payment.orderId) },
-        { $set: { paymentStatus: 'paid' } }
-      );
+    //   await ordersCollection.updateOne(
+    //     { _id: new ObjectId(payment.orderId) },
+    //     { $set: { paymentStatus: 'paid' } }
+    //   );
 
-      const result = await paymentsCollection.insertOne(payment);
-      res.send(result);
-    });
+    //   const result = await paymentsCollection.insertOne(payment);
+    //   res.send(result);
+    // });
 
-    app.get('/payments', async (req, res) => {
-      const email = req.query.email;
-      const result = await paymentsCollection.find({ userEmail: email }).toArray();
-      res.send(result);
-    });
+    // app.get('/payments', async (req, res) => {
+    //   const email = req.query.email;
+    //   const result = await paymentsCollection.find({ userEmail: email }).toArray();
+    //   res.send(result);
+    // });
 
     console.log(' MongoDB Connected');
   } finally {}
