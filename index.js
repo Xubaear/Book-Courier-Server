@@ -75,12 +75,12 @@ async function run() {
       res.send(result);
     });
 
-    // Librarian books
-    app.get('/books/librarian', async (req, res) => {
-      const email = req.query.email;
-      const result = await booksCollection.find({ librarianEmail: email }).toArray();
-      res.send(result);
-    });
+    // // Librarian books
+    // app.get('/books/librarian', async (req, res) => {
+    //   const email = req.query.email;
+    //   const result = await booksCollection.find({ librarianEmail: email }).toArray();
+    //   res.send(result);
+    // });
 
     // Update book
     app.patch('/books/:id', async (req, res) => {
