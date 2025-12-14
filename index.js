@@ -49,15 +49,15 @@ async function run() {
       res.send(result);
     });
 
-    // // Update role (admin)
-    // app.patch('/users/role', async (req, res) => {
-    //   const { email, role } = req.body;
-    //   const result = await usersCollection.updateOne(
-    //     { email },
-    //     { $set: { role } }
-    //   );
-    //   res.send(result);
-    // });
+    // Update role (admin)
+    app.patch('/users/role', async (req, res) => {
+      const { email, role } = req.body;
+      const result = await usersCollection.updateOne(
+        { email },
+        { $set: { role } }
+      );
+      res.send(result);
+    });
 
     /* ================= BOOKS ================= */
 
