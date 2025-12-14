@@ -29,7 +29,7 @@ async function run() {
     const ordersCollection = db.collection('orders');
     const paymentsCollection = db.collection('payments');
 
-    /* ================= USERS ================= */
+  //  USERS
 
     // Save user (default role = user)
     app.post('/users', async (req, res) => {
@@ -59,7 +59,7 @@ async function run() {
       res.send(result);
     });
 
-    /* ================= BOOKS ================= */
+    // BOOKS
 
     // Add book (librarian)
     app.post('/books', async (req, res) => {
@@ -101,7 +101,7 @@ async function run() {
       res.send(result);
     });
 
-    /* ================= ORDERS ================= */
+    // ORDERS
 
     // Place order (user)
     app.post('/orders', async (req, res) => {
@@ -148,7 +148,7 @@ async function run() {
       res.send(result);
     });
 
-    /* ================= PAYMENTS (FAKE) ================= */
+    // PAYMENTS
 
     app.post('/payments', async (req, res) => {
       const payment = req.body;
