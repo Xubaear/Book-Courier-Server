@@ -103,15 +103,15 @@ async function run() {
 
     /* ================= ORDERS ================= */
 
-    // Place order (user)
-    app.post('/orders', async (req, res) => {
-      const order = req.body;
-      order.status = 'pending';
-      order.paymentStatus = 'unpaid';
-      order.createdAt = new Date();
-      const result = await ordersCollection.insertOne(order);
-      res.send(result);
-    });
+    // // Place order (user)
+    // app.post('/orders', async (req, res) => {
+    //   const order = req.body;
+    //   order.status = 'pending';
+    //   order.paymentStatus = 'unpaid';
+    //   order.createdAt = new Date();
+    //   const result = await ordersCollection.insertOne(order);
+    //   res.send(result);
+    // });
 
     // User orders
     app.get('/orders/user', async (req, res) => {
