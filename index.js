@@ -21,17 +21,19 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect(); 
+    
     const db = client.db('book_courier_db');
-
     const usersCollection = db.collection('users');
     const booksCollection = db.collection('books');
     const ordersCollection = db.collection('orders');
     const paymentsCollection = db.collection('payments');
 
-  //  USERS
+    
+    // USERS APIs
+   
 
-    // Save user (default role = user)
+    //  Save user
     app.post('/users', async (req, res) => {
       const user = req.body;
       const existing = await usersCollection.findOne({ email: user.email });
@@ -43,13 +45,20 @@ async function run() {
       res.send(result);
     });
 
-    // Get all users (admin)
+    //  Get all users
     app.get('/users', async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
 
-    // Update role (admin)
+    // Get single user by email
+    app.get('/users/:email', async (req, res) => {
+      const email = req.params.email;
+      const result = await usersCollection.findOne({ email: email });
+      res.send(result);
+    });
+
+    // Update role
     app.patch('/users/role', async (req, res) => {
       const { email, role } = req.body;
       const result = await usersCollection.updateOne(
@@ -59,9 +68,11 @@ async function run() {
       res.send(result);
     });
 
-    // BOOKS
+    
+    // BOOKS APIs
+    
 
-    // Add book (librarian)
+    // Add book
     app.post('/books', async (req, res) => {
       const book = req.body;
       book.createdAt = new Date();
@@ -69,13 +80,22 @@ async function run() {
       res.send(result);
     });
 
-    // Get published books (public)
+    // Get ALL books
     app.get('/books', async (req, res) => {
-      const result = await booksCollection.find({ status: 'published' }).toArray();
+      const result = await booksCollection.find().toArray();
       res.send(result);
     });
 
-    // Librarian books
+    // Latest Books
+    app.get('/latest-books', async (req, res) => {
+      const result = await booksCollection.find()
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .toArray();
+      res.send(result);
+    });
+
+    // Get Librarian's books
     app.get('/books/librarian', async (req, res) => {
       const email = req.query.email;
       const result = await booksCollection.find({ librarianEmail: email }).toArray();
@@ -86,6 +106,7 @@ async function run() {
     app.patch('/books/:id', async (req, res) => {
       const id = req.params.id;
       const update = req.body;
+      delete update._id;
       const result = await booksCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: update }
@@ -93,7 +114,7 @@ async function run() {
       res.send(result);
     });
 
-    // Delete book (admin) + cascade orders
+    // Delete book
     app.delete('/books/:id', async (req, res) => {
       const id = req.params.id;
       await ordersCollection.deleteMany({ bookId: id });
@@ -101,9 +122,10 @@ async function run() {
       res.send(result);
     });
 
-    // ORDERS
+   
+    // ORDERS APIs
+    
 
-    // Place order (user)
     app.post('/orders', async (req, res) => {
       const order = req.body;
       order.status = 'pending';
@@ -113,21 +135,28 @@ async function run() {
       res.send(result);
     });
 
-    // User orders
+   
     app.get('/orders/user', async (req, res) => {
       const email = req.query.email;
-      const result = await ordersCollection.find({ userEmail: email }).toArray();
+      
+      const result = await ordersCollection.find({ email: email }).toArray();
       res.send(result);
     });
 
-    // Librarian orders
+    
+    app.get('/orders/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await ordersCollection.findOne(query);
+      res.send(result);
+    });
+
     app.get('/orders/librarian', async (req, res) => {
       const email = req.query.email;
       const result = await ordersCollection.find({ librarianEmail: email }).toArray();
       res.send(result);
     });
 
-    // Update order status (librarian)
     app.patch('/orders/status/:id', async (req, res) => {
       const id = req.params.id;
       const { status } = req.body;
@@ -138,7 +167,6 @@ async function run() {
       res.send(result);
     });
 
-    // Cancel order (user/librarian)
     app.patch('/orders/cancel/:id', async (req, res) => {
       const id = req.params.id;
       const result = await ordersCollection.updateOne(
@@ -148,12 +176,15 @@ async function run() {
       res.send(result);
     });
 
-    // PAYMENTS
+    
+    // PAYMENTS APIs
+    
 
     app.post('/payments', async (req, res) => {
       const payment = req.body;
       payment.createdAt = new Date();
 
+      // order status paid
       await ordersCollection.updateOne(
         { _id: new ObjectId(payment.orderId) },
         { $set: { paymentStatus: 'paid' } }
@@ -169,7 +200,7 @@ async function run() {
       res.send(result);
     });
 
-    console.log(' MongoDB Connected');
+    console.log('MongoDB Connected Successfully');
   } finally {}
 }
 
