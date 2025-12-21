@@ -8,11 +8,22 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware
+
+const cookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production", 
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "strict", 
+};
+
+
 app.use(cors({
-  origin: ['http://localhost:5173'], 
+  origin: [
+    'http://localhost:5173',                          
+    'https://book-courier-service.netlify.app'        
+  ], 
   credentials: true
 }));
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -32,6 +43,7 @@ const verifyToken = (req, res, next) => {
   if (!token) {
     return res.status(401).send({ message: 'Unauthorized access' });
   }
+  
   jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
     if (err) {
       return res.status(401).send({ message: 'Unauthorized access' });
@@ -57,20 +69,19 @@ async function run() {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: '1h' });
 
-      res.cookie('token', token, {
-        httpOnly: true,
-        secure: false, 
-        sameSite: 'strict'
-      })
+      
+      res.cookie('token', token, cookieOptions)
       .send({ success: true });
     });
 
     app.post('/logout', async (req, res) => {
-      res.clearCookie('token', { maxAge: 0 }).send({ success: true });
+      
+      res.clearCookie('token', { ...cookieOptions, maxAge: 0 })
+      .send({ success: true });
     });
 
     
-    // USER'S APIs
+    // USERS APIs
     
 
     app.post('/users', async (req, res) => {
@@ -105,8 +116,7 @@ async function run() {
 
     
     // BOOKS APIs
-    
-
+   
     app.post('/books', async (req, res) => {
       const book = req.body;
       book.createdAt = new Date();
@@ -151,7 +161,6 @@ async function run() {
       res.send(result);
     });
 
-    
     // ORDERS APIs
     
 
@@ -208,8 +217,8 @@ async function run() {
       res.send(result);
     });
 
-    
     // PAYMENTS APIs
+    
    
     app.post('/payments', async (req, res) => {
       const payment = req.body;
