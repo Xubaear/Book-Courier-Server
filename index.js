@@ -1,13 +1,20 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken'); 
+const cookieParser = require('cookie-parser'); 
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());
+// Middleware
+app.use(cors({
+  origin: ['http://localhost:5173'], 
+  credentials: true
+}));
 app.use(express.json());
+app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.gpc8o8j.mongodb.net/?appName=Cluster0`;
 
@@ -19,10 +26,23 @@ const client = new MongoClient(uri, {
   }
 });
 
+// Verify Token Middleware
+const verifyToken = (req, res, next) => {
+  const token = req.cookies?.token;
+  if (!token) {
+    return res.status(401).send({ message: 'Unauthorized access' });
+  }
+  jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: 'Unauthorized access' });
+    }
+    req.user = decoded;
+    next();
+  });
+};
+
 async function run() {
   try {
-    // await client.connect(); 
-    
     const db = client.db('book_courier_db');
     const usersCollection = db.collection('users');
     const booksCollection = db.collection('books');
@@ -30,35 +50,50 @@ async function run() {
     const paymentsCollection = db.collection('payments');
 
     
-    // USERS APIs
-   
+    // AUTH RELATED API (JWT)
+    
 
-    //  Save user
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: '1h' });
+
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: false, 
+        sameSite: 'strict'
+      })
+      .send({ success: true });
+    });
+
+    app.post('/logout', async (req, res) => {
+      res.clearCookie('token', { maxAge: 0 }).send({ success: true });
+    });
+
+    
+    // USER'S APIs
+    
+
     app.post('/users', async (req, res) => {
       const user = req.body;
       const existing = await usersCollection.findOne({ email: user.email });
       if (existing) return res.send({ message: 'User already exists' });
-
       user.role = 'user';
       user.createdAt = new Date();
       const result = await usersCollection.insertOne(user);
       res.send(result);
     });
 
-    //  Get all users
     app.get('/users', async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
 
-    // Get single user by email
     app.get('/users/:email', async (req, res) => {
       const email = req.params.email;
       const result = await usersCollection.findOne({ email: email });
       res.send(result);
     });
 
-    // Update role
     app.patch('/users/role', async (req, res) => {
       const { email, role } = req.body;
       const result = await usersCollection.updateOne(
@@ -72,7 +107,6 @@ async function run() {
     // BOOKS APIs
     
 
-    // Add book
     app.post('/books', async (req, res) => {
       const book = req.body;
       book.createdAt = new Date();
@@ -80,13 +114,11 @@ async function run() {
       res.send(result);
     });
 
-    // Get ALL books
     app.get('/books', async (req, res) => {
       const result = await booksCollection.find().toArray();
       res.send(result);
     });
 
-    // Latest Books
     app.get('/latest-books', async (req, res) => {
       const result = await booksCollection.find()
         .sort({ createdAt: -1 })
@@ -95,14 +127,12 @@ async function run() {
       res.send(result);
     });
 
-    // Get Librarian's books
     app.get('/books/librarian', async (req, res) => {
       const email = req.query.email;
       const result = await booksCollection.find({ librarianEmail: email }).toArray();
       res.send(result);
     });
 
-    // Update book
     app.patch('/books/:id', async (req, res) => {
       const id = req.params.id;
       const update = req.body;
@@ -114,7 +144,6 @@ async function run() {
       res.send(result);
     });
 
-    // Delete book
     app.delete('/books/:id', async (req, res) => {
       const id = req.params.id;
       await ordersCollection.deleteMany({ bookId: id });
@@ -122,7 +151,7 @@ async function run() {
       res.send(result);
     });
 
-   
+    
     // ORDERS APIs
     
 
@@ -135,25 +164,28 @@ async function run() {
       res.send(result);
     });
 
-   
-    app.get('/orders/user', async (req, res) => {
+    app.get('/orders/user', verifyToken, async (req, res) => {
       const email = req.query.email;
       
-      const result = await ordersCollection.find({ email: email }).toArray();
-      res.send(result);
-    });
+      // Authorization Check
+      if(req.user.email !== email){
+          return res.status(403).send({message: 'forbidden access'});
+      }
 
-    
-    app.get('/orders/:id', async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await ordersCollection.findOne(query);
+      const result = await ordersCollection.find({ email: email }).toArray();
       res.send(result);
     });
 
     app.get('/orders/librarian', async (req, res) => {
       const email = req.query.email;
       const result = await ordersCollection.find({ librarianEmail: email }).toArray();
+      res.send(result);
+    });
+
+    app.get('/orders/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await ordersCollection.findOne(query);
       res.send(result);
     });
 
@@ -167,7 +199,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch('/orders/cancel/:id', async (req, res) => {
+    app.patch('/orders/cancel/:id', verifyToken, async (req, res) => {
       const id = req.params.id;
       const result = await ordersCollection.updateOne(
         { _id: new ObjectId(id) },
@@ -178,18 +210,14 @@ async function run() {
 
     
     // PAYMENTS APIs
-    
-
+   
     app.post('/payments', async (req, res) => {
       const payment = req.body;
       payment.createdAt = new Date();
-
-      // order status paid
       await ordersCollection.updateOne(
         { _id: new ObjectId(payment.orderId) },
         { $set: { paymentStatus: 'paid' } }
       );
-
       const result = await paymentsCollection.insertOne(payment);
       res.send(result);
     });
